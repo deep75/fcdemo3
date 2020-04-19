@@ -1,0 +1,33 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fcdemo3
+spec:
+  replicas: 4
+  template:
+    metadata:
+      labels:
+        app: fcdemo3
+    spec:
+      containers:
+      - name: fcdemo3
+        image: mcas/franceconnect-demo2:latest
+        ports:
+        - containerPort: 3000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: fcdemo-service
+  labels:
+    app: fcdemo-service
+spec:
+  type: LoadBalancer
+  ports:
+    # the port that this service should serve on
+  - port: 80
+    targetPort: 3000
+    protocol: TCP
+  selector:
+    app: fcdemo3

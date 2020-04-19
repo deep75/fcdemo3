@@ -1,0 +1,11 @@
+FROM s390x/node:13-alpine as build
+
+WORKDIR /app
+COPY . ./
+RUN npm install
+
+FROM s390x/node:13-alpine
+
+COPY --from=build /app /
+EXPOSE 3000
+CMD ["npm", "start"]
