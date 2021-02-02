@@ -34,17 +34,13 @@ spec:
     port: 80
     targetPort: 3000
 ---
-apiVersion: networking.k8s.io/v1beta1
+apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: fcdemo-ingress
-  annotations:
-    ingress.kubernetes.io/ssl-redirect: "false"
 spec:
-  rules:
-  - http:
-      paths:
-      - path: /
-        backend:
-          serviceName: fcdemo-service
-          servicePort: 80
+  defaultBackend:
+    service:
+      name: fcdemo-service
+      port:
+        number: 80
