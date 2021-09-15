@@ -63,9 +63,9 @@ app.get('/data-callback', oauthDataCallback);
 // Setting app port
 const port = process.env.PORT || '3000';
 // Starting server
-const server = app.listen(port, () => {
+const server = app.listen(port, '0.0.0.0', () => {
   // eslint-disable-next-line no-console
-  console.log(`\x1b[32mServer listening on http://localhost:${port}\x1b[0m`);
+  console.log(`\x1b[32mServer listening on http://0.0.0.0:${port}\x1b[0m`);
 });
 
 export default server;
