@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
       - name: fcdemo3
-        image: mcas/franceconnect-demo2:latest
+        image: mcas/franceconnect-demo3:latest
         ports:
         - containerPort: 3000
 ---
