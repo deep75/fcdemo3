@@ -1,6 +1,3 @@
 #!/usr/bin/env node
 
-require('babel-polyfill');
-require('babel-register');
-
-module.exports = require('../app.js');
+import '../app.js';

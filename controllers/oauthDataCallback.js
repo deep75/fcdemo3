@@ -1,6 +1,11 @@
 import axios from 'axios';
-import querystring from 'querystring';
-import config from '../config';
+import config from '../config.js';
+import {
+  clearDataRequest,
+  DATA_REDIRECT_URI,
+  getDataClient,
+  getDataRequest,
+} from '../helpers/utils.js';
 
 /**
  * Use to send the access token to an data provider.
@@ -14,41 +19,36 @@ const oauthDataCallback = async (req, res, next) => {
     return res.sendStatus(400);
   }
 
+  const requestChecks = getDataRequest(req);
+
+  if (!requestChecks?.state || !requestChecks?.nonce) {
+    return res.sendStatus(400);
+  }
+
   try {
-    // Set request params
-    const body = {
-      grant_type: 'authorization_code',
-      redirect_uri: `${config.FS_URL}${config.DATA_CALLBACK_FS_PATH}`,
-      client_id: config.DATA_CLIENT_ID,
-      client_secret: config.DATA_CLIENT_SECRET,
-      code: req.query.code,
-    };
+    const client = await getDataClient();
+    const params = client.callbackParams(req);
+    const tokenSet = await client.callback(DATA_REDIRECT_URI, params, requestChecks);
+    clearDataRequest(req);
 
-    // Request access token.
-    const { data: { access_token: accessToken } } = await axios({
-      method: 'POST',
-      headers: { 'content-type': 'application/x-www-form-urlencoded' },
-      data: querystring.stringify(body),
-      url: `${config.FC_URL}${config.TOKEN_FC_PATH}`,
-    });
-
-    if (!accessToken) {
+    if (!tokenSet.access_token) {
       return res.sendStatus(401);
     }
 
-    // Request data from data provider
-    const { data } = await axios({
-      method: 'GET',
-      // Only valid if it's used with https://github.com/france-connect/data-provider-example/
-      // If you want to use your own code change the url's value in the config/config.json file.
-      url: `${config.FD_URL}${config.DGFIP_DATA_FD_PATH}`,
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
+    // Only valid if it's used with https://github.com/france-connect/data-provider-example/
+    // If you want to use your own code change the url's value in the config/config.json file.
+    const { data } = await axios.get(
+      `${config.FD_URL}${config.DGFIP_DATA_FD_PATH}`,
+      {
+        headers: { Authorization: `Bearer ${tokenSet.access_token}` },
+      },
+    );
 
     return res.render('pages/data', {
       data: JSON.stringify(data, null, 2),
     });
   } catch (error) {
+    clearDataRequest(req);
     return next(error);
   }
 };

@@ -2,9 +2,14 @@
  * Helper to get an access token from France Connect.
  * @see @link{ https://partenaires.franceconnect.gouv.fr/fcp/fournisseur-service# }
  */
-import axios from 'axios';
-import querystring from 'querystring';
-import config from '../config';
+import {
+  AUTHENTICATION_REDIRECT_URI,
+  clearAuthenticationRequest,
+  clearLogoutRequest,
+  getAuthenticationClient,
+  getAuthenticationRequest,
+  isValidLogoutState,
+} from '../helpers/utils.js';
 
 /**
  * Init FranceConnect authentication login process.
@@ -16,48 +21,41 @@ export const oauthLoginCallback = async (req, res, next) => {
     return res.sendStatus(400);
   }
 
+  const requestChecks = getAuthenticationRequest(req);
+
+  if (!requestChecks?.state || !requestChecks?.nonce) {
+    return res.sendStatus(400);
+  }
+
   try {
-    // Set request params
-    const body = {
-      grant_type: 'authorization_code',
-      redirect_uri: `${config.FS_URL}${config.LOGIN_CALLBACK_FS_PATH}`,
-      client_id: config.AUTHENTICATION_CLIENT_ID,
-      client_secret: config.AUTHENTICATION_CLIENT_SECRET,
-      code: req.query.code,
-    };
+    const client = await getAuthenticationClient();
+    const params = client.callbackParams(req);
+    const tokenSet = await client.callback(AUTHENTICATION_REDIRECT_URI, params, requestChecks);
+    clearAuthenticationRequest(req);
 
-    // Request access token.
-    const { data: { access_token: accessToken, id_token: idToken } } = await axios({
-      method: 'POST',
-      headers: { 'content-type': 'application/x-www-form-urlencoded' },
-      data: querystring.stringify(body),
-      url: `${config.FC_URL}${config.TOKEN_FC_PATH}`,
-    });
-
-    if (!accessToken) {
+    if (!tokenSet.access_token) {
       return res.sendStatus(401);
     }
 
     // Store the idToken in session so it is available for logout
-    req.session.idToken = idToken;
-
-    // Request user data
-    const { data: user } = await axios({
-      method: 'GET',
-      headers: { Authorization: `Bearer ${accessToken}` },
-      url: `${config.FC_URL}${config.USERINFO_FC_PATH}`,
-    });
+    req.session.idToken = tokenSet.id_token;
 
     // Store the user in session so it is available for future requests
-    req.session.user = user;
+    req.session.user = await client.userinfo(tokenSet);
 
     return res.redirect('/');
   } catch (error) {
+    clearAuthenticationRequest(req);
     return next(error);
   }
 };
 
 export const oauthLogoutCallback = (req, res) => {
+  if (!isValidLogoutState(req)) {
+    return res.sendStatus(400);
+  }
+
+  clearLogoutRequest(req);
   // Remove idToken from session
   req.session.idToken = null;
   // Remove user from session
