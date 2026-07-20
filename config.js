@@ -19,6 +19,4 @@ const config = {
   DGFIP_SCOPES: 'dgfip_revenu_fiscal_de_reference_n_moins_1 dgfip_adresse_fiscale_de_taxation_n_moins_1',
   DGFIP_DATA_FD_PATH: '/api/dgfip',
 };
-
-
 export default config;
